@@ -5,11 +5,61 @@
 require "bundler"
 Bundler.setup
 
-require_relative "../lib/worker"
+require "aws-sdk-sns"
+require "aws-sdk-sqs"
 
+require_relative "../lib/handlers"
+
+################################################################################
+# Create queue, topic and subscribe
+################################################################################
+
+sqs = Aws::SQS::Client.new
+
+queue_name = "shyam-#{ENV.fetch('RACK_ENV')}-#{ENV.fetch('USER')}"
+queue_url =
+  begin
+    sqs.get_queue_url(queue_name: queue_name).queue_url
+  rescue Aws::SQS::Errors::NonExistentQueue
+    sqs.create_queue(queue_name: queue_name).queue_url
+  end
+queue_arn = sqs.get_queue_attributes(queue_url: queue_url, attribute_names: ["QueueArn"]).attributes["QueueArn"]
+
+sns = Aws::SNS::Client.new
+
+# will just return topic / subscription if already existing
+topic_name = "shyam-#{ENV.fetch('RACK_ENV')}"
+topic_arn = sns.create_topic(name: topic_name).topic_arn
+sns.subscribe(topic_arn: topic_arn, endpoint: queue_arn, protocol: "sqs")
+
+policy = {
+  'Policy' => {
+    'Version' => '2012-10-17',
+    'Id'      => "#{queue_arn}/SNSPolicy",
+    'Statement' => [
+      {
+        'Sid'       => "Sid#{topic_name}",
+        'Effect'    => 'Allow',
+        'Principal' => { 'AWS' => '*' },
+        'Action'    => 'SQS:SendMessage',
+        'Resource'  => queue_arn,
+        'Condition' => {
+          'ArnEquals' => { 'aws:SourceArn' => topic_arn }
+        },
+      },
+    ],
+  }.to_json,
+}
+
+sqs.set_queue_attributes(queue_url: queue_url, attributes: policy)
+
+################################################################################
+# Poll and handle messages
 ################################################################################
 
 require "aws-sdk-sqs"
+
+sqs = Aws::SQS::Client.new
 
 %w[INT TERM].each do |signal|
   trap(signal) do
@@ -22,39 +72,40 @@ end
 $stdout.sync = true # allow puts to work for heroku logging
 
 sqs = Aws::SQS::Client.new
-queue_name = ENV.fetch("AWS_SQS_NAME")
-queue = sqs.get_queue_url(queue_name: queue_name).queue_url
-poller = Aws::SQS::QueuePoller.new(queue, client: sqs)
+
+queue_url = sqs.get_queue_url(queue_name: queue_name).queue_url
+poller = Aws::SQS::QueuePoller.new(queue_url, client: sqs)
+
+poller.before_request do |stats|
+  throw :stop_polling if @shutdown
+end
 
 puts "Polling #{queue_name} for messages..."
-loop do
-  break if @shutdown
 
-  poller.poll(skip_delete: true, idle_timeout: 5, wait_time_seconds: 5) do |msg|
-    body = JSON.parse(msg.body)
-    message = JSON.parse(body["Message"])
+poller.poll(skip_delete: true, wait_time_seconds: 5) do |msg|
+  body = JSON.parse(msg.body)
+  message = JSON.parse(body["Message"])
 
-    puts "Handling message:", message
+  puts "Handling message:", message
 
-    begin
-      class_name = message.fetch("type").underscore.classify + "Handler"
-      handler = class_name.constantize.new(message)
-      handler.perform
-    rescue Handler::SkipMessageError => e
-      puts "Skipped message becase: #{e.message}"
-    rescue NameError => e
-      if e.message == "uninitialized constant #{class_name}"
-        puts "[WARNING]: no handler found for #{message.fetch('type')} infered to #{class_name}"
-        next
-      else
-        raise
-      end
-    rescue => e
-      puts "[ERROR]", e, e.backtrace
-      next # keep polling without deleting message
+  begin
+    class_name = message.fetch("type").underscore.classify + "Handler"
+    handler = class_name.constantize.new(message)
+    handler.perform
+  rescue Handler::SkipMessageError => e
+    puts "Skipped message becase: #{e.message}"
+  rescue NameError => e
+    if e.message == "uninitialized constant #{class_name}"
+      puts "[WARNING]: no handler found for #{message.fetch('type')} infered to #{class_name}"
+      next
+    else
+      raise
     end
-
-    puts "Message handled, deleting..."
-    poller.delete_message(msg)
+  rescue => e
+    puts "[ERROR]", e, e.backtrace
+    next # keep polling without deleting message
   end
+
+  puts "Message handled, deleting..."
+  poller.delete_message(msg)
 end
