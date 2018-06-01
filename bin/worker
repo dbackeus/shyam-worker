@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+
+################################################################################
+
+require "bundler"
+Bundler.setup
+
+require_relative "../lib/worker"
+
+################################################################################
+
+require "aws-sdk-sqs"
+
+%w[INT TERM].each do |signal|
+  trap(signal) do
+    puts ""
+    puts "#{signal} signal received, shutting down!"
+    @shutdown = true
+  end
+end
+
+$stdout.sync = true # allow puts to work for heroku logging
+
+sqs = Aws::SQS::Client.new
+queue_name = ENV.fetch("AWS_SQS_NAME")
+queue = sqs.get_queue_url(queue_name: queue_name).queue_url
+poller = Aws::SQS::QueuePoller.new(queue, client: sqs)
+
+puts "Polling #{queue_name} for messages..."
+loop do
+  break if @shutdown
+
+  poller.poll(skip_delete: true, idle_timeout: 5, wait_time_seconds: 5) do |msg|
+    body = JSON.parse(msg.body)
+    message = JSON.parse(body["Message"])
+
+    puts "Handling message:", message
+
+    begin
+      class_name = message.fetch("type").underscore.classify + "Handler"
+      handler = class_name.constantize.new(message)
+      handler.perform
+    rescue Handler::SkipMessageError => e
+      puts "Skipped message becase: #{e.message}"
+    rescue NameError => e
+      if e.message == "uninitialized constant #{class_name}"
+        puts "[WARNING]: no handler found for #{message.fetch('type')} infered to #{class_name}"
+        next
+      else
+        raise
+      end
+    rescue => e
+      puts "[ERROR]", e, e.backtrace
+      next # keep polling without deleting message
+    end
+
+    puts "Message handled, deleting..."
+    poller.delete_message(msg)
+  end
+end
