@@ -4,6 +4,7 @@ module Bitmex
   BITMEX_BASE = ENV.fetch("BITMEX_URL")
 
   HttpError = Class.new(StandardError)
+  OverloadedError = Class.new(HttpError)
 
   # TODO: how to deal with LTC / BCH?
   def self.order_amount(risk, price, stop_loss_price, wallet_balance = Bitmex.wallet_balance)
@@ -14,9 +15,9 @@ module Bitmex
     risk_in_contracts = risk * total_contracts
     entry_stop_difference = (price - stop_loss_price).abs
     position_size_contracts = (risk_in_contracts / entry_stop_difference) * price
-    position_size_btc = position_size_contracts / price
-    minimum_leverage = position_size_btc / wallet_balance
-    recommended_leverage = position_size_btc / (wallet_balance / 3) # 1/3 of wallet balance
+    # position_size_btc = position_size_contracts / price
+    # minimum_leverage = position_size_btc / wallet_balance
+    # recommended_leverage = position_size_btc / (wallet_balance / 3) # 1/3 of wallet balance
     position_size_contracts.floor
   end
 
@@ -92,8 +93,14 @@ module Bitmex
 
     if response.code == 200
       response
+    elsif response.code == 503
+      raise OverloadedError
     else
       raise HttpError, "[#{response.code}] #{response.body}"
     end
+  rescue OverloadedError
+    puts "WARNING: 503 overloaded retrying in 550ms"
+    sleep 0.55
+    retry
   end
 end
