@@ -65,7 +65,7 @@ RSpec.describe ClosePositionHandler do
          with(body: "{\"filter\":\"{\\\"clOrdLinkID\\\":\\\"9\\\"}\"}").
          to_return(status: 200, body: current_orders.to_json)
 
-      stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
+      stub_request(:post, "https://testnet.bitmex.com/api/v1/order").
         to_return(status: 200, body: "{}")
 
       stub_request(:delete, "https://testnet.bitmex.com/api/v1/order/all").
@@ -77,8 +77,8 @@ RSpec.describe ClosePositionHandler do
       handler.perform
 
       # close at market
-      expect(WebMock).to have_requested(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
-        with(body: '{"orders":[{"symbol":"XBTUSD","clOrdLinkID":"9","ordType":"Market","execInst":"Close","text":"{\"type\":\"close\",\"position_id\":9}"}]}')
+      expect(WebMock).to have_requested(:post, "https://testnet.bitmex.com/api/v1/order").
+        with(body: '{"symbol":"XBTUSD","clOrdLinkID":"9","ordType":"Market","execInst":"Close","text":"{\"type\":\"close\",\"position_id\":9}"}')
 
       # cancel remaining stop loss
       expect(WebMock).to have_requested(:delete, "https://testnet.bitmex.com/api/v1/order/all").
