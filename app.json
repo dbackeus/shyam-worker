@@ -1,0 +1,66 @@
+{
+  "name": "Shyam Worker",
+  "description": "Bitmex trading worker handling messages from an SNS topic",
+  "scripts": {
+    "postdeploy": ""
+  },
+  "env": {
+    "AWS_ACCESS_KEY_ID": {
+      "description": "IAM access key id to manage the SNS / SQS setup",
+      "required": true
+    },
+    "AWS_SECRET_ACCESS_KEY": {
+      "description": "IAM access key id to manage the SNS / SQS setup",
+      "required": true
+    },
+    "BITMEX_URL": {
+      "description": "URL for the bitmex api",
+      "value": "https://testnet.bitmex.com",
+      "required": true
+    },
+    "AWS_REGION": {
+      "description": "IAM access key id to manage the SNS / SQS setup",
+      "value": "eu-west-1",
+      "required": true
+    },
+    "RACK_ENV": {
+      "description": "The ruby environment to run in (staging or production)",
+      "value": "eu-west-1",
+      "required": true
+    },
+    "USER": {
+      "description": "Telegram username of user owning the worker",
+      "required": true
+    },
+    "BITMEX_API_KEY": {
+      "description": "API Key of the bitmex account being managed",
+      "required": true
+    },
+    "WEB_CONCURRENCY": {
+      "description": "API Secret of the bitmex account being managed",
+      "required": true
+    },
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "hobby"
+    }
+  },
+  "addons": [
+    "logentries",
+    {
+      "plan": "le_tryit",
+    },
+  ],
+  "buildpacks": [{
+    "url": "heroku/ruby",
+  }],
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "bundle exec rspec"
+      }
+    }
+  }
+}
