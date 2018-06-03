@@ -16,7 +16,7 @@ require_relative "../lib/handlers"
 
 sqs = Aws::SQS::Client.new
 
-queue_name = "shyam-#{ENV.fetch('RACK_ENV')}-#{ENV.fetch('USER')}"
+queue_name = "shyam-#{ENV.fetch('APP_ENV')}-#{ENV.fetch('USER')}"
 queue_url =
   begin
     sqs.get_queue_url(queue_name: queue_name).queue_url
@@ -28,7 +28,7 @@ queue_arn = sqs.get_queue_attributes(queue_url: queue_url, attribute_names: ["Qu
 sns = Aws::SNS::Client.new
 
 # will just return topic / subscription if already existing
-topic_name = "shyam-#{ENV.fetch('RACK_ENV')}"
+topic_name = "shyam-#{ENV.fetch('APP_ENV')}"
 topic_arn = sns.create_topic(name: topic_name).topic_arn
 sns.subscribe(topic_arn: topic_arn, endpoint: queue_arn, protocol: "sqs")
 
