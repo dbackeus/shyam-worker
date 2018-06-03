@@ -10,8 +10,7 @@ class EnterPositionHandler < Handler
       raise ArgumentError, "Missing required parameters: #{missing_params.join(', ')}. Got: #{params}"
     end
 
-    # TODO: Dynamic risk
-    risk = params.fetch("risk") == "high" ? 0.005 : 0.01
+    risk_percent = risk_percent(params.fetch("risk"))
     symbol = params.fetch("symbol")
     stop = params.fetch("stop")
     amount_percent = params.fetch("amount_percent")
@@ -20,7 +19,7 @@ class EnterPositionHandler < Handler
 
     order_data = { position_id: position_id, message_number: message_number }
 
-    amount_in_contracts = Bitmex.order_amount(risk, current_price, stop)
+    amount_in_contracts = Bitmex.order_amount(risk_percent, current_price, stop)
 
     if amount_in_contracts == 0
       puts "WARNING: Could not enter position #{position_id} since amount_in_contracts was 0"
@@ -46,7 +45,7 @@ class EnterPositionHandler < Handler
       side: side,
       ordType: "Market",
       orderQty: amount_to_enter,
-      text: order_data.merge(type: "entry", amount_percent: amount_percent, risk: risk).to_json,
+      text: order_data.merge(type: "entry", amount_percent: amount_percent, risk: risk_percent).to_json,
     }
 
     entry_orders = [
@@ -75,5 +74,16 @@ class EnterPositionHandler < Handler
 
     Bitmex.create_orders(entry_orders)
     Bitmex.create_orders(target_orders) unless target_orders.empty?
+  end
+
+  private
+
+  def risk_percent(risk)
+    case risk
+      when "normal" then ENV.fetch("NORMAL_RISK_PERCENT", "0.01").to_f
+      when "medium" then ENV.fetch("HIGH_RISK_PERCENT", "0.0075").to_f
+      when "high" then ENV.fetch("HIGH_RISK_PERCENT", "0.005").to_f
+      else raise ArgumentError, "Unknown risk: #{risk}"
+    end
   end
 end

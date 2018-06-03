@@ -37,6 +37,18 @@
       "description": "API Secret of the bitmex account being managed",
       "required": true
     },
+    "NORMAL_RISK_PERCENT": {
+      "value": "0.01",
+      "required": true
+    },
+    "HIGH_RISK_PERCENT": {
+      "value": "0.005",
+      "required": true
+    },
+    "MEDIUM_RISK_PERCENT": {
+      "value": "0.0075",
+      "required": true
+    }
   },
   "formation": {
     "worker": {
