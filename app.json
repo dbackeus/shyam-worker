@@ -58,7 +58,7 @@
   },
   "addons": ["logentries:le_tryit"],
   "buildpacks": [{
-    "url": "heroku/ruby",
+    "url": "heroku/ruby"
   }],
   "environments": {
     "test": {
