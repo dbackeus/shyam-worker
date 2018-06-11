@@ -29,7 +29,7 @@ class Handler
 
   def position
     @position ||= begin
-      filter = { symbol: stop_order.fetch("symbol") }.to_json
+      filter = { symbol: stop_order.fetch("symbol"), isOpen: true }.to_json
       response = Bitmex.get("position", filter: filter)
       JSON.parse(response.body).first
     end

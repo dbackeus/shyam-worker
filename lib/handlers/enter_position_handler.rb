@@ -1,5 +1,5 @@
 class EnterPositionHandler < Handler
-  REQUIRED_PARAMS = %w[position_id symbol side risk stop amount_percent]
+  REQUIRED_PARAMS = %w[position_id symbol side risk stop amount_percent price_at_entry published_at]
 
   def perform
     missing_params = REQUIRED_PARAMS.map do |param|
@@ -10,12 +10,19 @@ class EnterPositionHandler < Handler
       raise ArgumentError, "Missing required parameters: #{missing_params.join(', ')}. Got: #{params}"
     end
 
+    skip_if_published_too_long_ago!(params.fetch("published_at"))
+
     risk_percent = risk_percent(params.fetch("risk"))
     symbol = params.fetch("symbol")
     stop = params.fetch("stop")
     amount_percent = params.fetch("amount_percent")
     side = params.fetch("side")
+
+    skip_if_already_in_position!(symbol)
+
     current_price = Bitmex.current_price(symbol, side)
+
+    skip_if_too_much_slippage!(side, params.fetch("price_at_entry"), current_price)
 
     order_data = { position_id: position_id, message_number: message_number }
 
@@ -77,6 +84,40 @@ class EnterPositionHandler < Handler
   end
 
   private
+
+  def skip_if_published_too_long_ago!(published_at_string)
+    published_at = Time.parse(published_at_string)
+    seconds_since_published = published_at - Time.now
+
+    if seconds_since_published < -(60 * 10)
+      raise SkipMessageError, "Too long ago since entry was published: #{seconds_since_published}"
+    end
+  end
+
+  def skip_if_already_in_position!(symbol)
+    filter = { symbol: symbol, isOpen: true }.to_json
+    response = Bitmex.get("position", filter: filter)
+    position = JSON.parse(response.body).first
+
+    if position
+      raise SkipMessageError, "Already in a #{symbol} position"
+    end
+  end
+
+  def skip_if_too_much_slippage!(side, price_at_entry, current_price)
+    side = side.downcase
+    difference = price_at_entry - current_price
+
+    return if side == "buy" && difference > 0
+    return if side == "sell" && difference < 0
+
+    average_price = (price_at_entry + current_price) / 2.0
+    percent_difference = difference.abs / average_price
+
+    if percent_difference > 0.0025
+      raise SkipMessageError, "Too much slippage for #{side}, price_at_entry: #{price_at_entry}, current_price: #{current_price}, percent_difference: #{percent_difference}"
+    end
+  end
 
   def risk_percent(risk)
     case risk

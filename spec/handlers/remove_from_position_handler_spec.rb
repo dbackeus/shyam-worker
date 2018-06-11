@@ -69,7 +69,7 @@ RSpec.describe RemoveFromPositionHandler do
          to_return(status: 200, body: current_orders.to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\"}").
+        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
         to_return(status: 200, body: [current_position].to_json)
 
       stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
@@ -144,7 +144,7 @@ RSpec.describe RemoveFromPositionHandler do
          to_return(status: 200, body: current_orders.to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"ADAM18\\\"}\"}").
+        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"ADAM18\\\",\\\"isOpen\\\":true}\"}").
         to_return(status: 200, body: [current_position].to_json)
 
       stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").

@@ -71,7 +71,7 @@ RSpec.describe EnterPositionHandler do
         }
       ]
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\"}").
+        with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
         to_return(status: 200, body: [current_position].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/order").
