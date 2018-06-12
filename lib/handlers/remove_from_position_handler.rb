@@ -65,7 +65,8 @@ class RemoveFromPositionHandler < Handler
       }
     end.compact
 
-    Bitmex.create_orders([remove_order]) unless already_removed
+    # Must update targets first to avoid risking canceling them out when position size changes
     Bitmex.update_orders(updated_targets) unless already_updated_targets || updated_targets.empty?
+    Bitmex.create_orders([remove_order]) unless already_removed
   end
 end
