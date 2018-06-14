@@ -25,8 +25,16 @@
       "description": "The environment to run in",
       "required": true
     },
-    "USER": {
-      "description": "Telegram username of user owning the worker",
+    "USER_ID": {
+      "description": "ID of user in the parent app. Only for monitoring purposes.",
+      "required": false
+    },
+    "WORKER_ID": {
+      "description": "ID of worker in the parent app. Only for monitoring purposes.",
+      "required": false
+    },
+    "QUEUE_URL": {
+      "description": "Queue to work on",
       "required": true
     },
     "BITMEX_API_KEY": {

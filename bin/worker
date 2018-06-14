@@ -11,55 +11,8 @@ require "aws-sdk-sqs"
 require_relative "../lib/handlers"
 
 ################################################################################
-# Create queue, topic and subscribe
-################################################################################
-
-sqs = Aws::SQS::Client.new
-
-queue_name = "shyam-#{ENV.fetch('APP_ENV')}-#{ENV.fetch('USER')}"
-queue_url =
-  begin
-    sqs.get_queue_url(queue_name: queue_name).queue_url
-  rescue Aws::SQS::Errors::NonExistentQueue
-    sqs.create_queue(queue_name: queue_name).queue_url
-  end
-queue_arn = sqs.get_queue_attributes(queue_url: queue_url, attribute_names: ["QueueArn"]).attributes["QueueArn"]
-
-sns = Aws::SNS::Client.new
-
-# will just return topic / subscription if already existing
-topic_name = "shyam-#{ENV.fetch('APP_ENV')}"
-topic_arn = sns.create_topic(name: topic_name).topic_arn
-sns.subscribe(topic_arn: topic_arn, endpoint: queue_arn, protocol: "sqs")
-
-policy = {
-  'Policy' => {
-    'Version' => '2012-10-17',
-    'Id'      => "#{queue_arn}/SNSPolicy",
-    'Statement' => [
-      {
-        'Sid'       => "Sid#{topic_name}",
-        'Effect'    => 'Allow',
-        'Principal' => { 'AWS' => '*' },
-        'Action'    => 'SQS:SendMessage',
-        'Resource'  => queue_arn,
-        'Condition' => {
-          'ArnEquals' => { 'aws:SourceArn' => topic_arn }
-        },
-      },
-    ],
-  }.to_json,
-}
-
-sqs.set_queue_attributes(queue_url: queue_url, attributes: policy)
-
-################################################################################
-# Poll and handle messages
-################################################################################
 
 require "aws-sdk-sqs"
-
-sqs = Aws::SQS::Client.new
 
 %w[INT TERM].each do |signal|
   trap(signal) do
@@ -73,8 +26,7 @@ $stdout.sync = true # allow puts to work for heroku logging
 
 sqs = Aws::SQS::Client.new
 
-queue_url = sqs.get_queue_url(queue_name: queue_name).queue_url
-poller = Aws::SQS::QueuePoller.new(queue_url, client: sqs)
+poller = Aws::SQS::QueuePoller.new(ENV.fetch("QUEUE_URL"), client: sqs)
 
 poller.before_request do |stats|
   throw :stop_polling if @shutdown
