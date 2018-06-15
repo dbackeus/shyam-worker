@@ -32,7 +32,7 @@ poller.before_request do |stats|
   throw :stop_polling if @shutdown
 end
 
-puts "Polling #{queue_name} for messages..."
+puts "Polling #{ENV.fetch("QUEUE_URL")} for messages..."
 
 poller.poll(skip_delete: true, wait_time_seconds: 5) do |msg|
   body = JSON.parse(msg.body)
