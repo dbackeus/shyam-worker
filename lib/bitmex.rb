@@ -22,13 +22,12 @@ module Bitmex
   end
 
   def self.current_price(symbol, side)
-    response = get("quote", symbol: symbol, reverse: true, count: 1)
-    data = JSON.parse(response.body)
-    if side.downcase == "buy"
-      data.first.fetch("askPrice")
-    else
-      data.first.fetch("bidPrice")
-    end
+    inverse_side = side.downcase == "buy" ? "sell" : "buy"
+    response = get("OrderBook/L2", symbol: symbol, depth: 1)
+    entries = JSON.parse(response.body)
+    entry = entries.find { |entry| entry.fetch("side").downcase == inverse_side }
+
+    entry.fetch("price")
   end
 
   # symbol - BTCUSD, XBTU18, XBT7D_U110, XBTM18, ADAM18, BCHM18, ETHM18, LTCM18, XRPM18

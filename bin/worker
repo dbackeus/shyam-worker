@@ -25,7 +25,6 @@ end
 $stdout.sync = true # allow puts to work for heroku logging
 
 sqs = Aws::SQS::Client.new
-
 poller = Aws::SQS::QueuePoller.new(ENV.fetch("QUEUE_URL"), client: sqs)
 
 poller.before_request do |stats|

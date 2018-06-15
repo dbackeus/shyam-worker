@@ -26,9 +26,9 @@ RSpec.describe EnterPositionHandler do
          with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
          to_return(status: 200, body: [].to_json)
 
-      stub_request(:get, "https://testnet.bitmex.com/api/v1/quote").
-        with(body: "{\"symbol\":\"XBTUSD\",\"reverse\":true,\"count\":1}").
-        to_return(status: 200, body: [{ bidPrice: 8710, askPrice: 8710.5 }].to_json)
+      stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
+        with(body: "{\"symbol\":\"XBTUSD\",\"depth\":1}").
+        to_return(status: 200, body: [{ side: "Buy", price: 8710 }, { side: "Sell", price: 8710.5 }].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
         to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
@@ -73,9 +73,9 @@ RSpec.describe EnterPositionHandler do
          with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"ADAM18\\\",\\\"isOpen\\\":true}\"}").
          to_return(status: 200, body: [].to_json)
 
-      stub_request(:get, "https://testnet.bitmex.com/api/v1/quote").
-        with(body: "{\"symbol\":\"ADAM18\",\"reverse\":true,\"count\":1}").
-        to_return(status: 200, body: [{ bidPrice: 0.00002923, askPrice: 0.00002930 }].to_json)
+       stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
+         with(body: "{\"symbol\":\"ADAM18\",\"depth\":1}").
+         to_return(status: 200, body: [{ side: "Buy", price: 0.00002923 }, { side: "Sell", price: 0.00002930 }].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
         to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
@@ -139,9 +139,9 @@ RSpec.describe EnterPositionHandler do
         },
       }.as_json
 
-      stub_request(:get, "https://testnet.bitmex.com/api/v1/quote").
-        with(body: "{\"symbol\":\"XBTUSD\",\"reverse\":true,\"count\":1}").
-        to_return(status: 200, body: [{ bidPrice: 8690, askPrice: 8690.5 }].to_json)
+      stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
+        with(body: "{\"symbol\":\"XBTUSD\",\"depth\":1}").
+        to_return(status: 200, body: [{ side: "Buy", price: 8690 }, { side: "Sell", price: 8690.5 }].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
          with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
