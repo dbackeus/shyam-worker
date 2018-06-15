@@ -5,14 +5,11 @@
 require "bundler"
 Bundler.setup
 
-require "aws-sdk-sns"
 require "aws-sdk-sqs"
 
 require_relative "../lib/handlers"
 
 ################################################################################
-
-require "aws-sdk-sqs"
 
 %w[INT TERM].each do |signal|
   trap(signal) do
