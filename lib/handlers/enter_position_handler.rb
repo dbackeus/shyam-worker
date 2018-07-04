@@ -18,7 +18,7 @@ class EnterPositionHandler < Handler
     amount_percent = params.fetch("amount_percent")
     side = params.fetch("side")
 
-    skip_if_already_in_position!(symbol)
+    skip_if_already_in_position_and_adjust_leverage!(symbol)
 
     current_price = Bitmex.current_price(symbol, side)
 
@@ -94,13 +94,18 @@ class EnterPositionHandler < Handler
     end
   end
 
-  def skip_if_already_in_position!(symbol)
-    filter = { symbol: symbol, isOpen: true }.to_json
-    response = Bitmex.get("position", filter: filter)
-    position = JSON.parse(response.body).first
+  def skip_if_already_in_position_and_adjust_leverage!(symbol)
+    filter = { symbol: symbol }.to_json
+    response = Bitmex.get("position", filter: filter, count: 1)
 
-    if position
-      raise SkipMessageError, "Already in a #{symbol} position"
+    if position = JSON.parse(response.body).first
+      if position.fetch("isOpen") == true
+        raise SkipMessageError, "Already in a #{symbol} position"
+      end
+
+      if position.fetch("crossMargin") == false
+        Bitmex.post("position/leverage", symbol: symbol, leverage: 0)
+      end
     end
   end
 

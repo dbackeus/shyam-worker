@@ -23,7 +23,7 @@ RSpec.describe EnterPositionHandler do
       }.as_json
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
+         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\",\"count\":1}").
          to_return(status: 200, body: [].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
@@ -70,7 +70,7 @@ RSpec.describe EnterPositionHandler do
       }.as_json
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"ADAM18\\\",\\\"isOpen\\\":true}\"}").
+         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"ADAM18\\\"}\",\"count\":1}").
          to_return(status: 200, body: [].to_json)
 
        stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
@@ -96,6 +96,48 @@ RSpec.describe EnterPositionHandler do
         with(body: '{"orders":[{"clOrdLinkID":"7","symbol":"ADAM18","side":"Sell","ordType":"Limit","price":2.993e-05,"orderQty":199,"execInst":"ReduceOnly","text":"{\"position_id\":7,\"message_number\":1,\"type\":\"target\",\"target_id\":1,\"amount_percent\":0.3}"},{"clOrdLinkID":"7","symbol":"ADAM18","side":"Sell","ordType":"Limit","price":3.2e-05,"orderQty":199,"execInst":"ReduceOnly","text":"{\"position_id\":7,\"message_number\":1,\"type\":\"target\",\"target_id\":2,\"amount_percent\":0.3}"}]}')
     end
 
+    it "sets leverage to cross margin if necessary" do
+      message = {
+        type: "ENTER_POSITION",
+        message_number: 1,
+        params: {
+          position_id: 7,
+          symbol: "XBTUSD",
+          side: "Sell",
+          risk: "normal",
+          stop: 8895,
+          price_at_entry: 8708,
+          amount_percent: 1,
+          published_at: Time.now,
+          targets: [
+            { id: 1, amount_percent: 0.3, price: 8546 },
+          ],
+        },
+      }.as_json
+
+      stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
+         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\",\"count\":1}").
+         to_return(status: 200, body: [{leverage: 10, crossMargin: false, currentQty: 0, isOpen: false}].to_json)
+
+      stub_request(:get, "https://testnet.bitmex.com/api/v1/OrderBook/L2").
+        to_return(status: 200, body: [{ side: "Buy", price: 8710 }, { side: "Sell", price: 8710.5 }].to_json)
+
+      stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
+        to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
+
+      stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
+        to_return(status: 200, body: [{}].to_json)
+
+      stub_request(:post, "https://testnet.bitmex.com/api/v1/position/leverage")
+
+      handler = EnterPositionHandler.new(message)
+
+      handler.perform
+
+      expect(WebMock).to have_requested(:post, "https://testnet.bitmex.com/api/v1/position/leverage").
+        with(body: "{\"symbol\":\"XBTUSD\",\"leverage\":0}")
+    end
+
     it "skips entering already entered positions" do
       message = {
         type: "ENTER_POSITION",
@@ -116,8 +158,8 @@ RSpec.describe EnterPositionHandler do
       }.as_json
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
-         to_return(status: 200, body: [{currentQty: 500}].to_json)
+         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\",\"count\":1}").
+         to_return(status: 200, body: [{leverage: 100, crossMargin: true, currentQty: 500, isOpen: true}].to_json)
 
      handler = EnterPositionHandler.new(message)
      expect { handler.perform }.to raise_error Handler::SkipMessageError
@@ -144,7 +186,7 @@ RSpec.describe EnterPositionHandler do
         to_return(status: 200, body: [{ side: "Buy", price: 8690 }, { side: "Sell", price: 8690.5 }].to_json)
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/position").
-         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\",\\\"isOpen\\\":true}\"}").
+         with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\",\"count\":1}").
          to_return(status: 200, body: [].to_json)
 
       handler = EnterPositionHandler.new(message)
