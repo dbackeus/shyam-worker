@@ -59,12 +59,6 @@ module Bitmex
     end
   end
 
-  def self.in_trade?(symbol)
-    response = Bitmex.get("position", filter: { symbol: symbol }.to_json)
-    positions = JSON.parse(response.body)
-    !positions.empty?
-  end
-
   def self.request(verb, path, params = {})
     path = "/api/v1/#{path}"
     expires = Time.now.to_i + 15
