@@ -2,7 +2,7 @@ require "spec_helper"
 
 RSpec.describe EnterPositionHandler do
   describe "#perform" do
-    it "creates market entry, stop market and target orders" do
+    it "cancels current orders, creates market entry, stop market and target orders" do
       message = {
         type: "ENTER_POSITION",
         message_number: 1,
@@ -33,12 +33,18 @@ RSpec.describe EnterPositionHandler do
       stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
         to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
 
+      stub_request(:delete, "https://testnet.bitmex.com/api/v1/order/all")
+
       stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
         to_return(status: 200, body: [{}].to_json)
 
       handler = EnterPositionHandler.new(message)
 
       handler.perform
+
+      # cancel current orders
+      expect(WebMock).to have_requested(:delete, "https://testnet.bitmex.com/api/v1/order/all").
+        with(body: '{"filter":"{\"symbol\":\"XBTUSD\"}"}')
 
       # entry / stop
       expect(WebMock).to have_requested(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
@@ -79,6 +85,8 @@ RSpec.describe EnterPositionHandler do
 
       stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
         to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
+
+      stub_request(:delete, "https://testnet.bitmex.com/api/v1/order/all")
 
       stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
         to_return(status: 200, body: [{}].to_json)
@@ -125,6 +133,8 @@ RSpec.describe EnterPositionHandler do
       stub_request(:get, "https://testnet.bitmex.com/api/v1/user/walletSummary").
         to_return(status: 200, body: [{walletBalance: 7100000}].to_json)
 
+      stub_request(:delete, "https://testnet.bitmex.com/api/v1/order/all")
+
       stub_request(:post, "https://testnet.bitmex.com/api/v1/order/bulk").
         to_return(status: 200, body: [{}].to_json)
 
@@ -161,8 +171,8 @@ RSpec.describe EnterPositionHandler do
          with(body: "{\"filter\":\"{\\\"symbol\\\":\\\"XBTUSD\\\"}\",\"count\":1}").
          to_return(status: 200, body: [{leverage: 100, crossMargin: true, currentQty: 500, isOpen: true}].to_json)
 
-     handler = EnterPositionHandler.new(message)
-     expect { handler.perform }.to raise_error Handler::SkipMessageError
+      handler = EnterPositionHandler.new(message)
+      expect { handler.perform }.to raise_error Handler::SkipMessageError
     end
 
     it "skips entering if price slippage is to big" do

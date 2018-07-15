@@ -39,7 +39,7 @@ class EnterPositionHandler < Handler
       side: inverse_side,
       ordType: "Stop",
       stopPx: stop,
-      execInst: "LastPrice,Close",
+      execInst: "LastPrice,Close", # Close means the same as ReduceOnly
       orderQty: amount_in_contracts,
       text: order_data.merge(type: "stop").to_json,
     }
@@ -79,6 +79,7 @@ class EnterPositionHandler < Handler
       }
     end
 
+    Bitmex.delete("order/all", filter: { symbol: symbol }.to_json)
     Bitmex.create_orders(entry_orders)
     Bitmex.create_orders(target_orders) unless target_orders.empty?
   end
