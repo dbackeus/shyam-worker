@@ -1,0 +1,3 @@
+- Possible to break idempotence for creating target orders on semi-failed entry
+- Adjust risk to account for fees
+- Ability to enter with limit orders
